@@ -17,7 +17,7 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    prepare_model_for_int8_training,
+    prepare_model_for_kbit_training,
     set_peft_model_state_dict,
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer
@@ -118,7 +118,7 @@ def train(
         torch_dtype=torch.float16,
         device_map=device_map,
     )
-
+    
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
 
     tokenizer.pad_token_id = (
@@ -191,7 +191,6 @@ def train(
     
     # For int8
     # model = prepare_model_for_int8_training(model)
-
     config = LoraConfig(
         r=lora_r,
         lora_alpha=lora_alpha,
@@ -201,7 +200,7 @@ def train(
         task_type="CAUSAL_LM",
     )
     model = get_peft_model(model, config)
-
+    
     if data_path.endswith(".json") or data_path.endswith(".jsonl"):
         data = load_dataset("json", data_files=data_path)
     else:

@@ -9,7 +9,7 @@ class ReactionExtractor:
     def __init__(
         self,
         model_size,
-        base_model="meta-llama/Llama-2-7b-hf",
+        base_model="meta-llama/Meta-Llama-3.1-8B",
         load_8bit=False,
         cache_dir=None
     ):
@@ -26,7 +26,7 @@ class ReactionExtractor:
             pass
 
         # Currently only 7b model size is supported
-        assert model_size in ['7b']
+        assert model_size in ['8b']
         lora_path = f"MingZhong/reaction-miner-{model_size}-lora"
 
         self.tokenizer = LlamaTokenizer.from_pretrained(base_model)
