@@ -20,7 +20,7 @@ from peft import (
     prepare_model_for_kbit_training,
     set_peft_model_state_dict,
 )
-from transformers import LlamaForCausalLM, LlamaTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils.prompter import Prompter
 
@@ -112,14 +112,14 @@ def train(
     if len(wandb_log_model) > 0:
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
-    model = LlamaForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(
         base_model,
         load_in_8bit=False,
         torch_dtype=torch.float16,
         device_map=device_map,
     )
     
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    tokenizer = AutoTokenizer.from_pretrained(base_model)
 
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
@@ -265,7 +265,7 @@ def train(
             # eval_steps=200 if val_set_size > 0 else None,
             # save_steps=200,
             save_strategy="epoch",
-            evaluation_strategy="epoch" if val_set_size > 0 else "no",
+            eval_strategy="epoch" if val_set_size > 0 else "no",
             output_dir=output_dir,
             save_total_limit=10,
             load_best_model_at_end=True if val_set_size > 0 else False,

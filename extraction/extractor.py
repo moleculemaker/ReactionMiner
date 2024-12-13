@@ -3,19 +3,19 @@ import torch
 from tqdm import tqdm
 import transformers
 from peft import PeftModel
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer
+from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoTokenizer
 
 class ReactionExtractor:
     def __init__(
         self,
         model_size,
-        base_model="meta-llama/Meta-Llama-3.1-8B",
+        base_model="meta-llama/Llama-3.1-8B",
         load_8bit=False,
         cache_dir=None
     ):
         """ Set up model """
         if torch.cuda.is_available():
-            self.device = "cuda"
+            self.device = "cuda:0"
         else:
             self.device = "cpu"
         
@@ -25,17 +25,19 @@ class ReactionExtractor:
         except:
             pass
 
-        # Currently only 7b model size is supported
+        # Currently only 8b model size is supported
         assert model_size in ['8b']
-        lora_path = f"MingZhong/reaction-miner-{model_size}-lora"
+        lora_path = f'TingfengLuo/reaction-miner-8b-lora'
 
-        self.tokenizer = LlamaTokenizer.from_pretrained(base_model)
-        if self.device == "cuda":
+        # self.tokenizer = LlamaTokenizer.from_pretrained(base_model)
+        self.tokenizer = AutoTokenizer.from_pretrained(base_model)
+        if self.device.startswith("cuda"):
             self.model = LlamaForCausalLM.from_pretrained(
                 base_model,
                 load_in_8bit=load_8bit,
                 torch_dtype=torch.float16,
-                device_map="auto",
+                # device_map="auto",
+                device_map={"": self.device},
             )
             self.model = PeftModel.from_pretrained(
                 self.model,

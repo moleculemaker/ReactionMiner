@@ -1,6 +1,6 @@
-export CUDA_VISIBLE_DEVICES=6,7
+export CUDA_VISIBLE_DEVICES=0,1
 
-WORLD_SIZE=2  torchrun --nproc_per_node=2 --master_port=5946 finetune.py \
+WORLD_SIZE=2  torchrun --nproc_per_node=2 --master_port=5948 finetune.py \
     --base_model "meta-llama/Meta-Llama-3.1-8B" \
     --num_epochs 10 \
     --cutoff_len 2048 \
@@ -14,3 +14,4 @@ WORLD_SIZE=2  torchrun --nproc_per_node=2 --master_port=5946 finetune.py \
     --val_set_size 0 \
     --use_chat_prompt \
     --train_on_inputs False \
+    --wandb_project "ReactionMiner" \
