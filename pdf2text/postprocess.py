@@ -37,13 +37,6 @@ def postprocess_file(file_path, output_dir):
         json.dump(output, output_file, ensure_ascii=False, indent=4)
     print(f"Processed and saved: {output_file_path}")
 
-    # except json.JSONDecodeError as e:
-    #     # Handle JSON-specific errors
-    #     print(f"Error decoding JSON in file {file_path}: {e}")
-    #     print(f"Skipping file: {file_path}")
-    # except Exception as e:
-    #     # Catch all other exceptions
-    #     print(f"Unexpected error while processing file {file_path}: {e}")
 def postprocess_directory(input_dir, output_dir):
     """
     Process all JSON files in a given directory and save the outputs.
@@ -63,5 +56,4 @@ projectPath = os.path.dirname(os.path.abspath(__file__)) + "/../"
 output_dir = projectPath + "/results"
 final_output = projectPath + "/results/"
 if __name__ == "__main__":
-    # postprocess_file(output_dir, final_output)
     postprocess_directory(output_dir, final_output)

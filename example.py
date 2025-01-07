@@ -5,12 +5,11 @@ from os.path import join
 # from pdf2text.generalParser import parseFile
 from segmentation.segmentor import TopicSegmentor
 from extraction.extractor import ReactionExtractor
-
+from extraction.extract_postprocess import extract_postprocess
 # pdf_path = "copper_acetate.pdf"
 
 # Stage I: pdf to text
 # The results will be automatically saved to pdf2text/results
-# print("########## Stage I: PDF-to-Text ##########")
 directory = 'pdf2text/results'
 for root, _, files in os.walk(directory):  # Walk through directory tree
     for filename in files:
@@ -26,10 +25,6 @@ for root, _, files in os.walk(directory):  # Walk through directory tree
                 print("########## Stage II: Text Segmentation ##########")
                 segmentor = TopicSegmentor()
                 seg_texts = segmentor.segment(paragraphs)
-# if "_SI" in pdf_path:
-#     seg_texts = segmentor.segment_si(paragraphs)
-# else:
-
 
 # Stage III: reaction extraction
                 print("########## Stage III: Reaction Extraction ##########")
@@ -41,27 +36,5 @@ for root, _, files in os.walk(directory):  # Walk through directory tree
                 full_path = join(write_path, reaction_path)
                 with open(full_path, 'w', encoding='utf-8') as f:
                     json.dump(reactions, f, indent=4, ensure_ascii=False)
+                extract_postprocess(full_path, 'extraction/results_filtered')
                 print(f"The results are stored in {full_path}")
-# Save the extracted chemical reactions
-# write_path = 'extraction/results'
-# os.makedirs(write_path, exist_ok=True)
-# reaction_path = os.path.splitext(pdf_path)[0] + '.json'
-# full_path = join(write_path, reaction_path)
-# with open(full_path, 'w', encoding='utf-8') as f:
-#     json.dump(reactions, f, indent=4, ensure_ascii=False)
-# print(f"The results are stored in {full_path}")
-
-# for i in range(1,11):
-    # with open(f"./segmentation_results/Paper{i}.txt", "r") as f:
-    #     seg_texts = f.readlines()
-    # reactions = extractor.extract(seg_texts)
-
-    # # Save the extracted chemical reactions
-    # write_path = 'extraction/results'
-    # os.makedirs(write_path, exist_ok=True)
-    # # reaction_path = os.path.splitext(pdf_path)[0] + '.json'
-    # reaction_path = f"paper{i}_8b_test.json"
-    # full_path = join(write_path, reaction_path)
-    # with open(full_path, 'w', encoding='utf-8') as f:
-    #     json.dump(reactions, f, indent=4, ensure_ascii=False)
-    # print(f"The results are stored in {full_path}")
