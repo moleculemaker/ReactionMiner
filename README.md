@@ -1,4 +1,6 @@
-# 🧪 ReactionMiner
+# 🧪 ReactionMiner V2
+This is the updated version of ReactionMiner. We have updated the pdf2txt module with Grobid + s2orc for better preprocessing. We have also updated the extraction module finetuned Llama 3.1 8b with LoRA and vLLM implementation.
+
 **Official Repository for the EMNLP 2023 Demo Paper**  
 [Reaction Miner: An Integrated System for Chemical Reaction Extraction from Textual Data](https://aclanthology.org/2023.emnlp-demo.36/)
 
@@ -8,28 +10,23 @@ To get started, install the necessary packages:
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
-For using the PDF-to-Text module in Reaction Miner, ensure Maven and Java 1.8 are installed. Then, execute:
+For using the PDF-to-Text module in Reaction Miner, install the submodule:
 ```
-cd pdf2text/SymbolScraper
 git submodule update --init
-make
 ```
+Then follow the instructions from [s2orc](https://github.com/allenai/s2orc-doc2json?tab=readme-ov-file) to install Grobid and relevant environment setup.
 
 ## 📖 How to Use Reaction Miner
-Given a PDF file, please refer to [example.py](./example.py) to run our entire system. It can be broken down into the following three steps:
-
+Current updated version requires two different environments. The pdf2txt module is running under the environment described in [s2orc](https://github.com/allenai/s2orc-doc2json?tab=readme-ov-file).
+The rest is running under our [environment](environment.yml).
 ### Step 1: PDF-to-Text Conversion
-This step transforms a PDF file into text, saving a json file:
-
-```python
-from pdf2text.generalParser import parseFile
-pdf_path = "copper_acetate.pdf" # PDF file given by the user
-result = parseFile(pdf_path)
-full_text = result['fullText'] # Text without paragraph information
-paragraphs = result['contents']  # Text with paragraph boundaries
+Ensure Grobid server is running, then execute
 ```
+bash pdf2text/pdf2txt.sh
+```
+This will process all the PDF files indicated by the defaulty directory `defaultDir` in pdf2text/config.py.
 
-The converted text is saved in `pdf2text/results`.
+Given a PDF file, please refer to [example.py](./example.py) to run the rest of our system. It can be broken down into the following 2 steps:
 
 ### Step 2: Text Segmentation
 Identifies paragraphs about chemical reactions and segments them:
@@ -45,13 +42,10 @@ Extracts structured chemical reactions from each segment:
 
 ```python
 from extraction.extractor import ReactionExtractor
-extractor = ReactionExtractor('7b')
+extractor = ReactionExtractor('8b')
 reactions = extractor.extract(seg_texts)
 ```
 
-## 🤖 Model Training
-We fine-tune Llama-2-7B with LoRA, a technique for efficient fine-tuning, on our collected training set for our reaction extractor.
-Explore the training details in [extraction/training](extraction/training).
 
 ## 📚 Citation
 If you find Reaction Miner helpful, please kindly cite our paper:
