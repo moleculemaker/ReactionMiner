@@ -1,5 +1,5 @@
 # 🧪 ReactionMiner V2
-This is the updated version of ReactionMiner. We have updated the pdf2txt module with Grobid + s2orc for better preprocessing. We have also updated the extraction module finetuned Llama 3.1 8b with LoRA and vLLM implementation.
+This is the updated version of ReactionMiner. We have updated the pdf2txt module with Grobid + s2orc for better preprocessing. We have also updated the extraction module by finetuning Llama-3.1-8b with LoRA and vLLM implementation.
 
 **Official Repository for the EMNLP 2023 Demo Paper**  
 [Reaction Miner: An Integrated System for Chemical Reaction Extraction from Textual Data](https://aclanthology.org/2023.emnlp-demo.36/)
