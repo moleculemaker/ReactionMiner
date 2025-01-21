@@ -36,7 +36,7 @@ services:
       - ./inputs:/workspace/10test/
 
       # Output files
-      - ./results:/workspace/results/
+      - ./results:/workspace/extraction/results_filtered/
     depends_on:
       grobid:
         condition: service_healthy
