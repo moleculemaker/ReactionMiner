@@ -2,6 +2,8 @@ import json
 import os
 from . import config
 def extract_postprocess(input_directory = config.extractFilter_input_directory, output_directory = config.extractFilter_output_directory):
+    print(f"Input Directory: {input_directory}")
+    print(f"Output Directory: {output_directory}")
     os.makedirs(output_directory, exist_ok=True)
     for filename in os.listdir(input_directory):
             input_file_path = os.path.join(input_directory, filename)

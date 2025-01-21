@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: reactionminer-test
+spec:
+  template:
+    spec:
+      #runtimeClassName: nvidia
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: In
+                values:
+                - 'true'
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Equal"
+        effect: "NoSchedule"
+        value: "true"
+#      nodeSelector:
+#        ncsa.role: worker-gpu
+      #securityContext:
+      #  fsGroup: 57439
+      #  runAsUser: 57439
+      #  runAsGroup: 57439
+      containers:
+      - name: reactionminer
+        image: moleculemaker/reactionminer:combined
+        imagePullPolicy: Always
+        env:
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: compute,utility
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: all
+        - name: GROBID_SERVER
+          value: mmli-grobid.staging.svc.cluster.local
+        - name: HF_TOKEN_PATH
+          value: /root/.cache/token
+#        resources:
+#          requests:
+#            memory: "12Gi"
+#            cpu: "1"
+#          limits:
+#            memory: "16Gi"
+#            cpu: "2"
+        volumeMounts:
+        # Inputs
+        - mountPath: /workspace/10test
+          name: shared-storage
+          subPath: uws/jobs/reactionminer/test3/in
+
+        # Outputs
+        - mountPath: /workspace/extraction/results
+          name: shared-storage
+          subPath: uws/jobs/reactionminer/test3/out
+
+        # HuggingFace model cache
+        - mountPath: /root/.cache/huggingface/hub
+          name: shared-storage
+          subPath: uws/jobs/reactionminer/.cache
+
+        # HuggingFace API token
+        - mountPath: /root/.cache/token
+          name: token
+          readOnly: true
+          subPath: token
+
+      restartPolicy: Never
+
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: mmli-clean-job-weights
+
+      - name: token
+        secret:
+          secretName: huggingface-token
+          items:
+            - key: token
+              path: token
+
+  backoffLimit: 4
