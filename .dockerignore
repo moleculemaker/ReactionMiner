@@ -1,0 +1,21 @@
+# Ignore Git metadata
+.git/
+.gitignore
+
+# Ignore Docker manifests
+.dockerignore
+docker-compose.yml
+Dockerfile
+
+# Cached files
+**/__pycache__/*
+.idea/
+
+# Mount these in at runtime, but don't add them into the image
+inputs/
+results/
+xml/
+tmp*
+mamba*
+.huggingface/token
+.huggingface/
