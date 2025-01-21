@@ -58,3 +58,65 @@ If you find Reaction Miner helpful, please kindly cite our paper:
   year={2023}
 }
 ```
+
+## Running in Docker
+Place any input files in `./inputs`
+
+To run Grobid + ReactionMiner using our pre-built image:
+```
+docker compose up -d
+```
+
+Output files will be located in `./results`
+
+When you're done using it, shut down related services using:
+```
+docker compose down
+```
+
+### Running with GPU
+By default, this image will not utilize a GPU if one is present
+
+To use a GPU, uncomment the `deploy` section in `docker-compose.yml`
+
+### Building Docker Image
+To build a Docker container for ReactionMiner:
+```
+docker compose build
+```
+
+You can build + run the image in one step using:
+```
+docker compose up -d --build
+```
+
+### Running in Kubernetes
+We have also included a `kubernetes/` folder that contains experimental manifests for running in a Kubernetes cluster
+
+You will need to adjust these manifests based on your own cluster.
+
+First, create a Secret containing your HuggingFace API Token:
+```
+vi kubernetes/huggingface.secret.yml
+kubectl apply -f kubernetes/huggingface.secret.yml
+```
+
+**Warning: Do not commit this API token to source control**
+
+Next, start up Grobid:
+```
+kubectl apply -f kubernetes/grobid.yml
+```
+
+Finally, run a ReactionMiner Job:
+```
+kubectl apply -f kubernetes/reactionminer.job.yml
+```
+
+This will utilize your HuggingFace API Token secret and will make requests to the Grobid server.
+
+To run an interactive shell with ReactionMiner for testing/debugging, you can use the Pod manifest:
+```
+kubectl apply -f kubernetes/reactionminer.pod.yml
+kubectl exec -it reactionminer -- bash
+```

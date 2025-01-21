@@ -6,15 +6,25 @@ volumes:
 
 services:
 
-  # s2orc-doc2json via pdf2text + ReactionMiner
+  # pdf2text + ReactionMiner
   reactionminer:
-    image: moleculemaker/reactionminer:combined
+    image: moleculemaker/reactionminer
     build:
       context: .
     env_file:
       - .env
     networks:
       - reactionminer
+
+    # Uncomment to utilize NVIDIA GPU
+    #deploy:
+    #  resources:
+    #    reservations:
+    #      devices:
+    #        - driver: nvidia
+    #          count: 1 # alternatively, use `count: all` for all GPUs
+    #          capabilities: [gpu]
+
     volumes:
       # Uncomment to map in source code for live dev
       #- .:/workspace
