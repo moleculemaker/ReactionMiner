@@ -51,12 +51,12 @@ spec:
         # Inputs
         - mountPath: /workspace/10test
           name: shared-storage
-          subPath: uws/jobs/reactionminer/test3/in
+          subPath: uws/jobs/reactionminer/test/in
 
         # Outputs
-        - mountPath: /workspace/extraction/results
+        - mountPath: /workspace/extraction/results_filtered
           name: shared-storage
-          subPath: uws/jobs/reactionminer/test3/out
+          subPath: uws/jobs/reactionminer/test/out
 
         # HuggingFace model cache
         - mountPath: /root/.cache/huggingface/hub
