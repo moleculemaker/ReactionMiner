@@ -28,7 +28,7 @@ spec:
       #  runAsGroup: 57439
       containers:
       - name: reactionminer
-        image: moleculemaker/reactionminer:combined
+        image: moleculemaker/reactionminer
         imagePullPolicy: Always
         env:
         - name: NVIDIA_DRIVER_CAPABILITIES
@@ -53,7 +53,7 @@ spec:
           subPath: uws/jobs/reactionminer/test3/in
 
         # Outputs
-        - mountPath: /workspace/extraction/results
+        - mountPath: /workspace/extraction/results_filtered
           name: shared-storage
           subPath: uws/jobs/reactionminer/test3/out
 

@@ -26,7 +26,7 @@ spec:
       #  runAsGroup: 57439
       containers:
       - name: reactionminer
-        image: moleculemaker/reactionminer:combined
+        image: moleculemaker/reactionminer
         imagePullPolicy: Always
         stdin: true
         tty: true
