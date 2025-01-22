@@ -57,7 +57,12 @@ def postprocess_file(file_path, output_dir):
 
         # Extract `text` from abstract and body_text
         texts = []
-
+        title = ""
+        
+        # From title
+        if "title" in data:
+            title = data.get("title", "")
+            
         # From abstract
         if "pdf_parse" in data and "abstract" in data["pdf_parse"]:
             for abstract_section in data["pdf_parse"]["abstract"]:
@@ -70,6 +75,7 @@ def postprocess_file(file_path, output_dir):
 
         # Prepare output data
         output = {
+            "title": title,               # Title of the document
             "fullText": " ".join(texts),  # Concatenate all text into one string
             "content": texts              # Keep each text as a separate entry
         }
