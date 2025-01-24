@@ -13,8 +13,9 @@ on:
   push:
     branches:
       - main
-      # TODO: Remove ReactionMiner_v2 once it has been merged back to main
+      # TODO: Remove these once it has been merged back to main
       - ReactionMiner_v2
+      - add-docker-workflow
 
   pull_request:
   
@@ -39,6 +40,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - uses: actions/checkout@v3
+        with:
+          submodules: 'true'
 
       - name: Docker meta
         id: meta
@@ -68,7 +71,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # TODO: support arm64?
+          # platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
