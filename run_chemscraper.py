@@ -1,6 +1,7 @@
 import logging
 import os
 import requests
+import sys
 from typing import BinaryIO
 from io import BytesIO
 
@@ -29,7 +30,7 @@ CHEMSCRAPER_OUTPUT_DIR = os.environ.get('CHEMSCRAPER_OUTPUT_DIR', '/workspace/ex
 CHEMSCRAPER_INDEX_NAME = os.environ.get('CHEMSCRAPER_INDEX_NAME', os.environ.get('JOB_ID'))
 
 # Base URL to ChemScraper API
-CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscraper-service-staging.staging.svc.cluster.local:8000')
+CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscraper-services-staging.staging.svc.cluster.local:8000')
 
 # Read PDFs + locate matching JSONs from disk
 def locate_matching_files(pdf_input_dir):
@@ -104,6 +105,7 @@ def submit_to_chemscraper(index_name, pdf_files, json_files, mapping):
             logger.debug("Response: " + str(response))
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
+        sys.exit(1)
 
 # TODO: Read large files in chunks?
 def read_file_bytes(path) -> BinaryIO:
