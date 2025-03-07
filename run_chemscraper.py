@@ -103,6 +103,13 @@ def submit_to_chemscraper(index_name, pdf_files, json_files, mapping):
             ))
 
             logger.debug("Response: " + str(response))
+
+            # Write JSON response
+            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
+            logged.info(f'Writing response to file: {output_file_path}')
+            with open(output_file_path, "w") as f:
+                f.write(str(response))
+
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         sys.exit(1)
