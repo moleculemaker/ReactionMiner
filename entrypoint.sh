@@ -21,3 +21,9 @@ echo '#######    RUNNING ReactionMiner    #######'
 echo '###########################################'
 cd /workspace
 python ./example.py
+
+# Run reactionminer example script in teh base conda env
+echo '###########################################'
+echo '########    RUNNING ChemScraper    ########'
+echo '###########################################'
+python ./run_chemscraper.py
