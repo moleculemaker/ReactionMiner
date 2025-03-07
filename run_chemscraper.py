@@ -77,7 +77,7 @@ def parse_input_files(pdf_input_dir):
         logger.debug('Mapping: ' + str(mapping))
 
         # Return lists of files and CSV mapping
-        return pdf_files, json_files, mapping, file_uploads
+        return pdf_files, json_files, mapping
 
 
 # Write mapping.csv to file, and submit this file with our request
