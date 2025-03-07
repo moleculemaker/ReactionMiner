@@ -149,11 +149,15 @@ if __name__ == "__main__":
     try:
         pdf_files, json_files, mapping = parse_input_files(pdf_input_dir=CHEMSCRAPER_PDF_INPUT_DIR)
         response = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
-        logger.debug("Response: " + str(response))
 
-        # Write JSON response
-        output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
-        write_json_output(output_file_path=output_file_path)
+        # Write JSON response to file
+        if response is not None:
+            logger.debug("Response: " + str(response))
+            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
+            write_json_output(output_file_path=output_file_path)
+        else:
+            # Raise error status if no response body
+            response.raise_for_status()
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         sys.exit(1)
