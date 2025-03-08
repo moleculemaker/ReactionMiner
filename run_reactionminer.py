@@ -1,6 +1,7 @@
 import os
 import json
-from os.path import join
+import logging
+import sys
 
 from segmentation.segmentor import TopicSegmentor
 from extraction.extractor import ReactionExtractor
@@ -37,7 +38,7 @@ def process_file(filename):
         write_path = 'extraction/results'
         os.makedirs(write_path, exist_ok=True)
         reaction_path = os.path.basename(file_path)
-        full_path = join(write_path, reaction_path)
+        full_path = os.path.join(write_path, reaction_path)
         logger.info(f"Writing outputs: {write_path}")
         with open(full_path, 'w', encoding='utf-8') as f:
             logger.debug(f"Writing file: {full_path}")
