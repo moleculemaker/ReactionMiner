@@ -64,7 +64,8 @@ if __name__ == "__main":
                     logger.warning(f"Skipping {filename}: JSON format required")
 
             with concurrent.futures.ProcessPoolExecutor() as executor:
-                for filename, in zip(FILES, executor.map(process_file, FILES)):
+                for filename in zip(FILES, executor.map(process_file, FILES)):
+                    logger.debug(f'Finished processing: {filename}')
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         sys.exit(1)
