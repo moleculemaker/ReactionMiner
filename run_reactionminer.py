@@ -60,7 +60,7 @@ def process_file(root, filename):
         os.makedirs(write_path, exist_ok=True)
         reaction_path = os.path.basename(file_path)
         full_path = os.path.join(write_path, reaction_path)
-        tasklogger.info(f"Writing outputs: {write_path}")
+        tasklogger.info(f"Writing outputs: {full_path}")
         with open(full_path, 'w', encoding='utf-8') as f:
             tasklogger.debug(f"Writing file: {full_path}")
             json.dump(reactions, f, indent=4, ensure_ascii=False)
