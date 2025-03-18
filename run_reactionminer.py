@@ -2,6 +2,9 @@ import os
 import json
 import logging
 import sys
+import time
+import traceback
+from concurrent.futures import ProcessPoolExecutor, wait
 
 from segmentation.segmentor import TopicSegmentor
 from extraction.extractor import ReactionExtractor
@@ -10,49 +13,66 @@ from extraction.extract_postprocess import extract_postprocess
 logging.basicConfig(
     format="%(levelname)s [%(asctime)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG
+    level=logging.INFO
 )
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 logger = logging.getLogger('run_reactionminer')
+logger.setLevel(LOG_LEVEL)
+
+# If MAX_WORKERS > 1, use process pool
+# If MAX_WORKERS is 0, 1, or negative, then run synchronously in a loop
+REACTIONMINER_MAX_WORKERS = int(os.getenv('REACTIONMINER_MAX_WORKERS', '1'))
+
+# You can override these if needed
+REACTIONMINER_SCRATCH_DIR = os.getenv('REACTIONMINER_SCRATCH_DIR', 'extraction/results')
+REACTIONMINER_OUTPUT_DIR = os.getenv('REACTIONMINER_OUTPUT_DIR', 'extraction/results_filtered')
+
+# Phase 2/3 use these shared resources
+# These are expensive, so we reuse them across all loop iterations
+segmentor = TopicSegmentor()
+extractor = ReactionExtractor('8b')
 
 # Run pdf2text and then ReactionMiner
-def process_file(filename):
-    logger.debug(f"JSON file found! Processing {filename}...")
+def process_file(root, filename):
+    tasklogger = logging.getLogger(f'reactionminer:process_file[{filename}]')
+
+    tasklogger.info("########## Stage I: Reading File ##########")
     file_path = os.path.join(root, filename)
-    logger.info("########## Stage I: Reading File ##########")
     with open(file_path, 'r', encoding='utf-8') as json_file:
+        tasklogger.debug(f"JSON file found! Processing {file_path}...")
         result = json.load(json_file)
+
         #full_text = result['fullText']  # Text without paragraph information
         paragraphs = result['content']  # Text with paragraph boundaries
 
         # Stage II: text segmentation
-        logger.info("########## Stage II: Text Segmentation ##########")
-        segmentor = TopicSegmentor()
+        tasklogger.info("########## Stage II: Text Segmentation ##########")
         seg_texts = segmentor.segment(paragraphs)
 
         # Stage III: reaction extraction
-        logger.info("########## Stage III: Reaction Extraction ##########")
-        extractor = ReactionExtractor('8b')
-        logger.debug("Now extracting...")
+        tasklogger.info("########## Stage III: Reaction Extraction ##########")
+        tasklogger.debug("Now extracting...")
         reactions = extractor.extract(seg_texts)
-        logger.debug("Done extracting!")
-        write_path = 'extraction/results'
+        tasklogger.debug("Done extracting!")
+
+        # Write JSON output file
+        write_path = REACTIONMINER_SCRATCH_DIR
         os.makedirs(write_path, exist_ok=True)
         reaction_path = os.path.basename(file_path)
         full_path = os.path.join(write_path, reaction_path)
-        logger.info(f"Writing outputs: {write_path}")
+        tasklogger.info(f"Writing outputs: {write_path}")
         with open(full_path, 'w', encoding='utf-8') as f:
-            logger.debug(f"Writing file: {full_path}")
+            tasklogger.debug(f"Writing file: {full_path}")
             json.dump(reactions, f, indent=4, ensure_ascii=False)
-        logger.debug(f"Done writing!")
-        extract_postprocess(write_path, 'extraction/results_filtered')
-        logger.info(f"The results are stored in {full_path}")
+        tasklogger.debug(f"Done writing!")
 
-        return True
+    return True
 
-if __name__ == "__main":
+if __name__ == "__main__":
     # The results will be automatically saved to pdf2text/results
     directory = 'results'
-    logger.info(f"Searching for {directory}")
+    logger.info(f"Searching {directory}")
+    logger.debug(f"   Max Workers = {REACTIONMINER_MAX_WORKERS}")
     FILES = []
 
     try:
@@ -60,13 +80,33 @@ if __name__ == "__main":
             for filename in files:
                 logger.debug(f"Checking {filename}")
                 if filename.endswith(".json"):
-                    FILES.append(filename)
+                    if REACTIONMINER_MAX_WORKERS > 1:
+                        # Run with process pool
+                        FILES.append(filename)
+                    else:
+                        # Run synchronously:
+                        process_file(root, filename)
                 else:
                     logger.warning(f"Skipping {filename}: JSON format required")
 
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                for filename in zip(FILES, executor.map(process_file, FILES)):
-                    logger.debug(f'Finished processing: {filename}')
+            # If max workers > 1, run asynchronously using a process pool
+            if REACTIONMINER_MAX_WORKERS > 1:
+                with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
+                    logger.info(f'Starting tasks...')
+                    futures = [executor.submit(process_file, root, file) for file in FILES]
+                    logger.debug(f'Finished submission!')
+
+                    logger.debug('Waiting for tasks to complete...')
+                    wait(futures)
+                    logger.info('All tasks are done!')
+
+            # Run postprocessing
+            logger.info('Running postprocessing...')
+            extract_postprocess(REACTIONMINER_SCRATCH_DIR, REACTIONMINER_OUTPUT_DIR)
+            logger.info('File processing complete!')
+            logger.info(f"The results are stored in {REACTIONMINER_SCRATCH_DIR}")
+
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
+        logger.error(traceback.format_exc())
         sys.exit(1)

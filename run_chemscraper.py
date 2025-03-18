@@ -2,6 +2,7 @@ import logging
 import os
 import requests
 import sys
+import traceback
 from typing import BinaryIO
 from io import BytesIO
 
@@ -13,9 +14,11 @@ from chemscraper.fast_api_client.api.default.index_pdfs_reactions_batch_index_pd
 logging.basicConfig(
     format="%(levelname)s [%(asctime)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG
+    level=logging.INFO
 )
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 logger = logging.getLogger('run_chemscraper')
+logger.setLevel(LOG_LEVEL)
 
 # Path to input PDFs for RM+CS
 # Files in this path will be automatically downloaded from MinIO before running the AlphaSynthesis job
@@ -65,7 +68,7 @@ def parse_input_files(pdf_input_dir):
                     logger.warning(f"  No matching JSON file found: {file}")
                 else:
                     # For each matching PDF-JSON pair, add to CSV mapping
-                    logger.info(f"  Matching JSON file found: {json_file_name}")
+                    logger.info(f"     Matching JSON file found: {json_file_name}")
 
                     # Maintain lists of these pairs to submit at the end
                     mapping[pdf_file_name] = json_file_name
@@ -150,14 +153,17 @@ if __name__ == "__main__":
         pdf_files, json_files, mapping = parse_input_files(pdf_input_dir=CHEMSCRAPER_PDF_INPUT_DIR)
         response = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
 
+        # Raise error status if no response body
+        logger.debug("Response: " + str(response))
+
         # Write JSON response to file
         if response is not None:
-            logger.debug("Response: " + str(response))
+            # TODO: handle response errors?
+            #response.raise_for_status()
             output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
             write_json_output(output_file_path=output_file_path)
-        else:
-            # Raise error status if no response body
-            response.raise_for_status()
+
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
+        logger.error(traceback.format_exc())
         sys.exit(1)

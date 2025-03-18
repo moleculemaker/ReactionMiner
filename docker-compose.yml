@@ -8,7 +8,7 @@ services:
 
   # pdf2text + ReactionMiner
   reactionminer:
-    image: moleculemaker/reactionminer
+    image: moleculemaker/reactionminer:chemscraper
     build:
       context: .
     env_file:
@@ -28,15 +28,20 @@ services:
     volumes:
       # Uncomment to map in source code for live dev
       #- .:/workspace
+      - ./chemscraper-output:/workspace/chemscraper-output
+      - ./run_chemscraper.py:/workspace/run_chemscraper.py
+      - ./run_reactionminer.py:/workspace/run_reactionminer.py
+      - ./chemscraper:/workspace/chemscraper
 
       # HuggingFace API token
       - ./.huggingface/token:/root/.cache/token
+      - ./.huggingface/hub:/root/.cache/huggingface/hub
 
       # Input files
       - ./inputs:/workspace/10test/
 
       # Output files
-      - ./results:/workspace/extraction/results_filtered/
+      #- ./results:/workspace/extraction/results_filtered/
     depends_on:
       grobid:
         condition: service_healthy
@@ -44,7 +49,8 @@ services:
 
   # See https://grobid.readthedocs.io/en/latest/Grobid-docker/
   grobid:
-    image: grobid/grobid:0.7.3
+    image: lfoppiano/grobid:0.7.3
+    pull_policy: if_not_present
     networks:
     - reactionminer
     healthcheck:
@@ -54,3 +60,5 @@ services:
       retries: 3
       start_period: 40s
       start_interval: 5s
+    #profiles:
+    #  - donotstart
