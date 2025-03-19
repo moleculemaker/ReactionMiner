@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import requests
@@ -137,7 +138,7 @@ def read_file_bytes(path) -> BinaryIO:
 def write_json_output(output_file_path, response):
     logger.info(f'Writing response to file: {output_file_path}')
     with open(output_file_path, "w") as f:
-        f.write(response.json())
+        f.write(json.dumps(response))
 
 # Walk directory and build up a mapping to submit to ChemScraper
 # exit with error code = 1 if any error encountered
