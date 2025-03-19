@@ -2,7 +2,6 @@ import os
 import json
 import logging
 import sys
-import time
 import traceback
 from concurrent.futures import ProcessPoolExecutor, wait
 
@@ -19,6 +18,7 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 logger = logging.getLogger('run_reactionminer')
 logger.setLevel(LOG_LEVEL)
 
+# TODO: EXPERIMENTAL
 # If MAX_WORKERS > 1, use process pool
 # If MAX_WORKERS is 0, 1, or negative, then run synchronously in a loop
 REACTIONMINER_MAX_WORKERS = int(os.getenv('REACTIONMINER_MAX_WORKERS', '1'))
@@ -32,6 +32,7 @@ REACTIONMINER_OUTPUT_DIR = os.getenv('REACTIONMINER_OUTPUT_DIR', 'extraction/res
 segmentor = TopicSegmentor()
 extractor = ReactionExtractor('8b')
 
+
 # Run pdf2text and then ReactionMiner
 def process_file(root, filename):
     tasklogger = logging.getLogger(f'reactionminer:process_file[{filename}]')
@@ -42,7 +43,7 @@ def process_file(root, filename):
         tasklogger.debug(f"JSON file found! Processing {file_path}...")
         result = json.load(json_file)
 
-        #full_text = result['fullText']  # Text without paragraph information
+        # full_text = result['fullText']  # Text without paragraph information
         paragraphs = result['content']  # Text with paragraph boundaries
 
         # Stage II: text segmentation
@@ -68,6 +69,7 @@ def process_file(root, filename):
 
     return True
 
+
 if __name__ == "__main__":
     # The results will be automatically saved to pdf2text/results
     directory = 'results'
@@ -85,10 +87,11 @@ if __name__ == "__main__":
                         FILES.append(filename)
                     else:
                         # Run synchronously:
-                        process_file(root, filename)
+                        process_file(root=root, filename=filename)
                 else:
                     logger.warning(f"Skipping {filename}: JSON format required")
 
+            # TODO: EXPERIMENTAL
             # If max workers > 1, run asynchronously using a process pool
             if REACTIONMINER_MAX_WORKERS > 1:
                 with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
@@ -110,3 +113,4 @@ if __name__ == "__main__":
         logger.error(f'ERROR: {ex}')
         logger.error(traceback.format_exc())
         sys.exit(1)
+
