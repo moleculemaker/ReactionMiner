@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+from urllib.error import HTTPError
+
 import requests
 import sys
 import traceback
@@ -135,10 +137,10 @@ def read_file_bytes(path) -> BinaryIO:
 
 
 # Write ChemScraper JSON response to file
-def write_json_output(output_file_path, response):
+def write_json_output(output_file_path, json_response):
     logger.info(f'Writing response to file: {output_file_path}')
     with open(output_file_path, "w") as f:
-        f.write(json.dumps(response))
+        f.write(json_response)
 
 # Walk directory and build up a mapping to submit to ChemScraper
 # exit with error code = 1 if any error encountered
@@ -159,10 +161,14 @@ if __name__ == "__main__":
 
         # Write JSON response to file
         if response is not None:
-            # TODO: handle response errors?
+            # Convert response dictionary to JSON
+            json_response = json.dumps(response)
             #response.raise_for_status()
             output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
-            write_json_output(output_file_path=output_file_path, response=response)
+            write_json_output(output_file_path=output_file_path, json_response=json_response)
+        else:
+            # handle response errors?
+            raise HTTPError('ERROR: Empty response encountered')
 
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
