@@ -148,7 +148,9 @@ def read_file_bytes(path: str) -> BinaryIO:
 def write_json_output(output_path: str, response: HTTPValidationError):
     logger.info(f'Writing response to file: {output_path}')
     with open(output_path, "w") as f:
-        json.dump(response, f, indent=4, ensure_ascii=False)
+        json_contents = json.dumps(response, indent=4, ensure_ascii=False)
+        logger.debug("Writing JSON contents: " + json_contents)
+        f.write(json_contents)
 
 
 # Walk directory and build up a mapping to submit to ChemScraper
@@ -166,7 +168,7 @@ if __name__ == "__main__":
         resp = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
 
         # Raise error status if no response body
-        logger.debug("Response: " + json.dumps(resp))
+        logger.debug("Response: " + str(resp))
 
         # Write JSON response to file
         if resp is not None:
