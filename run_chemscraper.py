@@ -166,7 +166,7 @@ if __name__ == "__main__":
         resp = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
 
         # Raise error status if no response body
-        logger.debug("Response: " + str(resp))
+        logger.debug("Response: " + json.dumps(resp))
 
         # Write JSON response to file
         if resp is not None:
