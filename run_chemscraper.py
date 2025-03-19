@@ -134,10 +134,10 @@ def read_file_bytes(path) -> BinaryIO:
 
 
 # Write ChemScraper JSON response to file
-def write_json_output(output_file_path):
+def write_json_output(output_file_path, response):
     logger.info(f'Writing response to file: {output_file_path}')
     with open(output_file_path, "w") as f:
-        f.write(str(response))
+        f.write(response.json())
 
 # Walk directory and build up a mapping to submit to ChemScraper
 # exit with error code = 1 if any error encountered
@@ -161,7 +161,7 @@ if __name__ == "__main__":
             # TODO: handle response errors?
             #response.raise_for_status()
             output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
-            write_json_output(output_file_path=output_file_path)
+            write_json_output(output_file_path=output_file_path, response=response)
 
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
