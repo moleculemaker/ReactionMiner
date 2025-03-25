@@ -185,6 +185,8 @@ if __name__ == "__main__":
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         logger.error(traceback.format_exc())
+        sys.exit(1)
+    finally:
+        logger.warning(f'Cleaning up resources...')
         gc.collect()
         torch.cuda.empty_cache()
-        sys.exit(1)
