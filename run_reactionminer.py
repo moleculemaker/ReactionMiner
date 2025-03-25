@@ -118,6 +118,8 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         logger.warning(f'Cleaning up resources...')
-        gc.collect()
+        collected_count = gc.collect()
+        logger.warning(f'Cleaned up resources: {collected_count}')
         torch.cuda.empty_cache()
+        logger.warning(f'Cache has been emptied. Shutting down...')
 
