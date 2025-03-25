@@ -117,7 +117,9 @@ if __name__ == "__main__":
         logger.error(traceback.format_exc())
         sys.exit(1)
     finally:
-        logger.warning(f'Cleaning up resources...')
+        logger.warning(f'Cleaning up model & resources...')
+        del segmentor
+        del extractor
         collected_count = gc.collect()
         logger.warning(f'Cleaned up resources: {collected_count}')
         torch.cuda.empty_cache()
