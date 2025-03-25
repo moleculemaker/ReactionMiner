@@ -1,3 +1,4 @@
+import gc
 import json
 import logging
 import os
@@ -8,6 +9,8 @@ import sys
 import traceback
 from typing import BinaryIO
 from io import BytesIO
+
+import torch
 
 from chemscraper.fast_api_client import Client
 from chemscraper.fast_api_client.models import HTTPValidationError
@@ -182,4 +185,6 @@ if __name__ == "__main__":
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         logger.error(traceback.format_exc())
+        gc.collect()
+        torch.cuda.empty_cache()
         sys.exit(1)

@@ -1,9 +1,12 @@
+import gc
 import os
 import json
 import logging
 import sys
 import traceback
 from concurrent.futures import ProcessPoolExecutor, wait
+
+import torch
 
 from segmentation.segmentor import TopicSegmentor
 from extraction.extractor import ReactionExtractor
@@ -112,5 +115,7 @@ if __name__ == "__main__":
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         logger.error(traceback.format_exc())
+        gc.collect()
+        torch.cuda.empty_cache()
         sys.exit(1)
 
