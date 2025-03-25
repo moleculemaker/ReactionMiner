@@ -1,0 +1,55 @@
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: mmli-grobid
+#  labels:
+#    app: mmli-grobid
+#spec:
+#  ingressClassName: traefik
+#  rules:
+#  - host: grobid.mmli1.ncsa.illinois.edu
+#    http:
+#      paths:
+#      - path: /
+#        pathType: Prefix
+#        backend:
+#          service:
+#            name: mmli-grobid
+#            port:
+#              number: 8070
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mmli-grobid
+  labels:
+    app: mmli-grobid
+spec:
+  selector:
+    app: mmli-grobid
+  ports:
+    - protocol: TCP
+      port: 8070
+      targetPort: 8070
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mmli-grobid
+  labels:
+    app: mmli-grobid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mmli-grobid
+  template:
+    metadata:
+      labels:
+        app: mmli-grobid
+    spec:
+      containers:
+      - name: mmli-grobid
+        image: grobid/grobid:0.7.3
+        ports:
+        - containerPort: 8070

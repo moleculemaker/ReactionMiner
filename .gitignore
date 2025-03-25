@@ -1,2 +1,5 @@
 training/*
 s2orc-doc2json/*
+.huggingface/
+.idea/*
+**/__pycache__/*

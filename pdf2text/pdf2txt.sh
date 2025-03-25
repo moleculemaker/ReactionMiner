@@ -1,1 +1,2 @@
-python run_s2orc.py && python postprocess.py
+#python run_s2orc.py && python postprocess.py
+python run_s2orc.py
