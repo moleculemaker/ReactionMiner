@@ -20,7 +20,7 @@ echo '###########################################'
 echo '#######    RUNNING ReactionMiner    #######'
 echo '###########################################'
 cd /workspace
-python ./example.py
+python ./run_reactionminer.py
 
 # Run ChemScraper using input PDF and ReactionMiner JSON output
 echo '###########################################'

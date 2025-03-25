@@ -1,11 +1,19 @@
+import gc
+import json
 import logging
 import os
+from urllib.error import HTTPError
+
 import requests
 import sys
+import traceback
 from typing import BinaryIO
 from io import BytesIO
 
+import torch
+
 from chemscraper.fast_api_client import Client
+from chemscraper.fast_api_client.models import HTTPValidationError
 from chemscraper.fast_api_client.types import File
 from chemscraper.fast_api_client.api.default import index_pdfs_reactions_batch_index_pdfs_reactions_batch_post as index_pdfs_reactions_batch
 from chemscraper.fast_api_client.api.default.index_pdfs_reactions_batch_index_pdfs_reactions_batch_post import BodyIndexPdfsReactionsBatchIndexPdfsReactionsBatchPost as IndexPdfsReactionsBatchPostBody
@@ -13,9 +21,11 @@ from chemscraper.fast_api_client.api.default.index_pdfs_reactions_batch_index_pd
 logging.basicConfig(
     format="%(levelname)s [%(asctime)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG
+    level=logging.INFO
 )
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 logger = logging.getLogger('run_chemscraper')
+logger.setLevel(LOG_LEVEL)
 
 # Path to input PDFs for RM+CS
 # Files in this path will be automatically downloaded from MinIO before running the AlphaSynthesis job
@@ -36,6 +46,7 @@ CHEMSCRAPER_INDEX_NAME = os.environ.get('CHEMSCRAPER_INDEX_NAME', os.environ.get
 # Base URL to ChemScraper API
 # We will override this default in production
 CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscraper-services-staging.staging.svc.cluster.local:8000')
+
 
 # Read PDFs + locate matching JSONs on disk
 # Create a mapping of PDF file -> JSON file
@@ -65,7 +76,7 @@ def parse_input_files(pdf_input_dir):
                     logger.warning(f"  No matching JSON file found: {file}")
                 else:
                     # For each matching PDF-JSON pair, add to CSV mapping
-                    logger.info(f"  Matching JSON file found: {json_file_name}")
+                    logger.info(f"     Matching JSON file found: {json_file_name}")
 
                     # Maintain lists of these pairs to submit at the end
                     mapping[pdf_file_name] = json_file_name
@@ -92,8 +103,9 @@ def save_mapping_csv(file_path, mapping):
             f.write(f'{index},{pdf_file},{json_file}\n')
             index += 1
 
+
 # Submit mapping + related files to Chemscraper API
-def submit_to_chemscraper(index_name, pdf_files, json_files, mapping):
+def submit_to_chemscraper(index_name: str, pdf_files, json_files, mapping):
     # Save mapping.csv to disk, upload to MinIO later
     mapping_csv_file_path = os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.csv')
     save_mapping_csv(file_path=mapping_csv_file_path, mapping=mapping)
@@ -101,40 +113,48 @@ def submit_to_chemscraper(index_name, pdf_files, json_files, mapping):
     # Create a new ChemScraper API client and submit the
     # PDF + JSON files and the mapping that links them
     with Client(base_url=CHEMSCRAPER_BASE_URL) as client:
-        return index_pdfs_reactions_batch.sync(client=client, index_name=index_name, body=IndexPdfsReactionsBatchPostBody(
-            # Our list of ReactionMiner PDF inputs
-            pdf_files=[File(
-                file_name=file.split('/')[-1],
-                payload=read_file_bytes(os.path.join(CHEMSCRAPER_PDF_INPUT_DIR, file)),
-                mime_type='application/pdf'
-            ) for file in pdf_files],
+        return index_pdfs_reactions_batch.sync(
+            client=client,
+            index_name=index_name,
+            body=IndexPdfsReactionsBatchPostBody(
+                # Our list of ReactionMiner PDF inputs
+                pdf_files=[File(
+                    file_name=file.split('/')[-1],
+                    payload=read_file_bytes(os.path.join(CHEMSCRAPER_PDF_INPUT_DIR, file)),
+                    mime_type='application/pdf'
+                ) for file in pdf_files],
 
-            # Our list of ReactionMiner JSON outputs
-            json_reaction_files=[File(
-                file_name=file.split('/')[-1],
-                payload=read_file_bytes(os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, file)),
-                mime_type='application/json'
-            ) for file in json_files],
+                # Our list of ReactionMiner JSON outputs
+                json_reaction_files=[File(
+                    file_name=file.split('/')[-1],
+                    payload=read_file_bytes(os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, file)),
+                    mime_type='application/json'
+                ) for file in json_files],
 
-            # The CSV created earlier that maps PDF file -> JSON file
-            mapping_file=File(
-                file_name='mapping.csv',
-                payload=read_file_bytes(os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.csv')),
-                mime_type='text/csv'
-            ),
-        ))
+                # The CSV created earlier that maps PDF file -> JSON file
+                mapping_file=File(
+                    file_name='mapping.csv',
+                    payload=read_file_bytes(os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.csv')),
+                    mime_type='text/csv'
+                ),
+            )
+        )
+
 
 # TODO: Read large files in chunks?
-def read_file_bytes(path) -> BinaryIO:
+def read_file_bytes(path: str) -> BinaryIO:
     with open(path, mode='rb') as f:
         return BytesIO(f.read())
 
 
 # Write ChemScraper JSON response to file
-def write_json_output(output_file_path):
-    logger.info(f'Writing response to file: {output_file_path}')
-    with open(output_file_path, "w") as f:
-        f.write(str(response))
+def write_json_output(output_path: str, response: HTTPValidationError):
+    logger.info(f'Writing response to file: {output_path}')
+    with open(output_path, "w") as f:
+        json_contents = json.dumps(response, indent=4, ensure_ascii=False)
+        logger.debug("Writing JSON contents: " + json_contents)
+        f.write(json_contents)
+
 
 # Walk directory and build up a mapping to submit to ChemScraper
 # exit with error code = 1 if any error encountered
@@ -148,16 +168,27 @@ if __name__ == "__main__":
 
     try:
         pdf_files, json_files, mapping = parse_input_files(pdf_input_dir=CHEMSCRAPER_PDF_INPUT_DIR)
-        response = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
+        resp = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
+
+        # Raise error status if no response body
+        logger.debug("Response: " + str(resp))
 
         # Write JSON response to file
-        if response is not None:
-            logger.debug("Response: " + str(response))
+        if resp is not None:
+            # Convert response dictionary to JSON
             output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
-            write_json_output(output_file_path=output_file_path)
+            write_json_output(output_path=output_file_path, response=resp)
         else:
-            # Raise error status if no response body
-            response.raise_for_status()
+            # Handle response errors
+            raise HTTPError('ERROR: Empty response encountered')
+
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
+        logger.error(traceback.format_exc())
         sys.exit(1)
+    finally:
+        logger.warning(f'Cleaning up resources...')
+        collected_count = gc.collect()
+        logger.warning(f'Cleaned up resources: {collected_count}')
+        torch.cuda.empty_cache()
+        logger.warning(f'Cache has been emptied. Shutting down...')
