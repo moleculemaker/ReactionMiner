@@ -104,11 +104,21 @@ def save_mapping_csv(file_path, mapping):
             index += 1
 
 
+# Write mapping.json to file, and save this file to disk
+def save_mapping_json(file_path, mapping):
+    with open(file_path, 'w') as f:
+        json.dump(mapping, f, indent=4)
+
+
 # Submit mapping + related files to Chemscraper API
 def submit_to_chemscraper(index_name: str, pdf_files, json_files, mapping):
     # Save mapping.csv to disk, upload to MinIO later
     mapping_csv_file_path = os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.csv')
     save_mapping_csv(file_path=mapping_csv_file_path, mapping=mapping)
+
+    # Save mapping.json to disk, upload to MinIO later
+    mapping_json_file_path = os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.json')
+    save_mapping_json(file_path=mapping_json_file_path, mapping=mapping)
 
     # Create a new ChemScraper API client and submit the
     # PDF + JSON files and the mapping that links them
