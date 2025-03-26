@@ -8,7 +8,7 @@ services:
 
   # pdf2text + ReactionMiner
   reactionminer:
-    image: moleculemaker/reactionminer:chemscraper
+    image: moleculemaker/reactionminer:latest
     build:
       context: .
     env_file:
