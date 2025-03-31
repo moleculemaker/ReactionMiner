@@ -30,14 +30,9 @@ REACTIONMINER_MAX_WORKERS = int(os.getenv('REACTIONMINER_MAX_WORKERS', '1'))
 REACTIONMINER_SCRATCH_DIR = os.getenv('REACTIONMINER_SCRATCH_DIR', 'extraction/results')
 REACTIONMINER_OUTPUT_DIR = os.getenv('REACTIONMINER_OUTPUT_DIR', 'extraction/results_filtered')
 
-# Phase 2/3 use these shared resources
-# These are expensive, so we reuse them across all loop iterations
-segmentor = TopicSegmentor()
-extractor = ReactionExtractor('8b')
-
 
 # Run pdf2text and then ReactionMiner
-def process_file(root, filename):
+def process_file(segmentor, extractor, root, filename):
     tasklogger = logging.getLogger(f'reactionminer:process_file[{filename}]')
 
     tasklogger.info("########## Stage I: Reading File ##########")
@@ -73,6 +68,14 @@ def process_file(root, filename):
     return True
 
 
+# Cleanup large resources used by the ReactionMiner part of the job
+def cleanup():
+    collected_count = gc.collect()
+    logger.info(f'Cleaned up resources: {collected_count}')
+    torch.cuda.empty_cache()
+    logger.info(f'Cache emptied, shutting down...')
+
+
 if __name__ == "__main__":
     # The results will be automatically saved to pdf2text/results
     directory = 'results'
@@ -80,48 +83,48 @@ if __name__ == "__main__":
     logger.debug(f"   Max Workers = {REACTIONMINER_MAX_WORKERS}")
     FILES = []
 
+    # Phase 2/3 use these shared resources
+    # These are expensive, so we reuse them across all loop iterations
     try:
-        for root, _, files in os.walk(directory):  # Walk through directory tree
-            for filename in files:
-                logger.debug(f"Checking {filename}")
-                if filename.endswith(".json"):
+        with TopicSegmentor() as segmentor:
+            with ReactionExtractor('8b') as extractor:
+
+                for root, _, files in os.walk(directory):  # Walk through directory tree
+                    for filename in files:
+                        logger.debug(f"Checking {filename}")
+                        if filename.endswith(".json"):
+                            if REACTIONMINER_MAX_WORKERS > 1:
+                                # Run with process pool
+                                FILES.append(filename)
+                            else:
+                                # Run synchronously:
+                                process_file(segmentor=segmentor, extractor=extractor, root=root, filename=filename)
+                        else:
+                            logger.warning(f"Skipping {filename}: JSON format required")
+
+                    # TODO: EXPERIMENTAL
+                    # If max workers > 1, run asynchronously using a process pool
                     if REACTIONMINER_MAX_WORKERS > 1:
-                        # Run with process pool
-                        FILES.append(filename)
-                    else:
-                        # Run synchronously:
-                        process_file(root=root, filename=filename)
-                else:
-                    logger.warning(f"Skipping {filename}: JSON format required")
+                        with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
+                            logger.info(f'Starting tasks...')
+                            futures = [executor.submit(process_file, segmentor, extractor, root, file) for file in FILES]
+                            logger.debug(f'Finished submission!')
 
-            # TODO: EXPERIMENTAL
-            # If max workers > 1, run asynchronously using a process pool
-            if REACTIONMINER_MAX_WORKERS > 1:
-                with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
-                    logger.info(f'Starting tasks...')
-                    futures = [executor.submit(process_file, root, file) for file in FILES]
-                    logger.debug(f'Finished submission!')
+                            logger.debug('Waiting for tasks to complete...')
+                            wait(futures)
+                            logger.info('All tasks are done!')
 
-                    logger.debug('Waiting for tasks to complete...')
-                    wait(futures)
-                    logger.info('All tasks are done!')
-
-            # Run postprocessing
-            logger.info('Running postprocessing...')
-            extract_postprocess(REACTIONMINER_SCRATCH_DIR, REACTIONMINER_OUTPUT_DIR)
-            logger.info('File processing complete!')
-            logger.info(f"The results are stored in {REACTIONMINER_SCRATCH_DIR}")
+                    # Run postprocessing
+                    logger.info('Running postprocessing...')
+                    extract_postprocess(REACTIONMINER_SCRATCH_DIR, REACTIONMINER_OUTPUT_DIR)
+                    logger.info('File processing complete!')
+                    logger.info(f"The results are stored in {REACTIONMINER_SCRATCH_DIR}")
 
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
         logger.error(traceback.format_exc())
         sys.exit(1)
     finally:
-        logger.warning(f'Cleaning up model & resources...')
-        del segmentor
-        del extractor
-        collected_count = gc.collect()
-        logger.warning(f'Cleaned up resources: {collected_count}')
-        torch.cuda.empty_cache()
-        logger.warning(f'Cache has been emptied. Shutting down...')
+        logger.info(f'Cleaning up model & resources...')
+        cleanup()
 
