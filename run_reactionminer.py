@@ -30,6 +30,8 @@ REACTIONMINER_MAX_WORKERS = int(os.getenv('REACTIONMINER_MAX_WORKERS', '1'))
 REACTIONMINER_SCRATCH_DIR = os.getenv('REACTIONMINER_SCRATCH_DIR', 'extraction/results')
 REACTIONMINER_OUTPUT_DIR = os.getenv('REACTIONMINER_OUTPUT_DIR', 'extraction/results_filtered')
 
+segmentor = TopicSegmentor()
+
 
 # Run pdf2text and then ReactionMiner
 def process_file(segmentor, extractor, root, filename):
@@ -84,41 +86,40 @@ if __name__ == "__main__":
     FILES = []
 
     # Phase 2/3 use these shared resources
-    # These are expensive, so we reuse them across all loop iterations
+    # extractor is expensive, so we reuse it across all loop iterations
     try:
-        with TopicSegmentor() as segmentor:
-            with ReactionExtractor('8b') as extractor:
+        with ReactionExtractor('8b') as extractor:
 
-                for root, _, files in os.walk(directory):  # Walk through directory tree
-                    for filename in files:
-                        logger.debug(f"Checking {filename}")
-                        if filename.endswith(".json"):
-                            if REACTIONMINER_MAX_WORKERS > 1:
-                                # Run with process pool
-                                FILES.append(filename)
-                            else:
-                                # Run synchronously:
-                                process_file(segmentor=segmentor, extractor=extractor, root=root, filename=filename)
+            for root, _, files in os.walk(directory):  # Walk through directory tree
+                for filename in files:
+                    logger.debug(f"Checking {filename}")
+                    if filename.endswith(".json"):
+                        if REACTIONMINER_MAX_WORKERS > 1:
+                            # Run with process pool
+                            FILES.append(filename)
                         else:
-                            logger.warning(f"Skipping {filename}: JSON format required")
+                            # Run synchronously:
+                            process_file(segmentor=segmentor, extractor=extractor, root=root, filename=filename)
+                    else:
+                        logger.warning(f"Skipping {filename}: JSON format required")
 
-                    # TODO: EXPERIMENTAL
-                    # If max workers > 1, run asynchronously using a process pool
-                    if REACTIONMINER_MAX_WORKERS > 1:
-                        with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
-                            logger.info(f'Starting tasks...')
-                            futures = [executor.submit(process_file, segmentor, extractor, root, file) for file in FILES]
-                            logger.debug(f'Finished submission!')
+                # TODO: EXPERIMENTAL
+                # If max workers > 1, run asynchronously using a process pool
+                if REACTIONMINER_MAX_WORKERS > 1:
+                    with ProcessPoolExecutor(max_workers=REACTIONMINER_MAX_WORKERS) as executor:
+                        logger.info(f'Starting tasks...')
+                        futures = [executor.submit(process_file, segmentor, extractor, root, file) for file in FILES]
+                        logger.debug(f'Finished submission!')
 
-                            logger.debug('Waiting for tasks to complete...')
-                            wait(futures)
-                            logger.info('All tasks are done!')
+                        logger.debug('Waiting for tasks to complete...')
+                        wait(futures)
+                        logger.info('All tasks are done!')
 
-                    # Run postprocessing
-                    logger.info('Running postprocessing...')
-                    extract_postprocess(REACTIONMINER_SCRATCH_DIR, REACTIONMINER_OUTPUT_DIR)
-                    logger.info('File processing complete!')
-                    logger.info(f"The results are stored in {REACTIONMINER_SCRATCH_DIR}")
+                # Run postprocessing
+                logger.info('Running postprocessing...')
+                extract_postprocess(REACTIONMINER_SCRATCH_DIR, REACTIONMINER_OUTPUT_DIR)
+                logger.info('File processing complete!')
+                logger.info(f"The results are stored in {REACTIONMINER_SCRATCH_DIR}")
 
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
