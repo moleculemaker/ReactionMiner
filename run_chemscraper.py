@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 import requests
 import sys
 import traceback
-from typing import BinaryIO
+from typing import BinaryIO, Tuple
 from io import BytesIO
 
 import torch
@@ -43,6 +43,10 @@ CHEMSCRAPER_OUTPUT_DIR = os.environ.get('CHEMSCRAPER_OUTPUT_DIR', CHEMSCRAPER_RE
 # Used when submitting to the /search endpoint
 CHEMSCRAPER_INDEX_NAME = os.environ.get('CHEMSCRAPER_INDEX_NAME', os.environ.get('JOB_ID', 'test'))
 
+# Maximum number of PDFs to send for each batch of ChemScraper requests
+# Setting this to 0 or a negative number will run all PDFs in a single batch
+CHEMSCRAPER_BATCH_SIZE = int(os.environ.get('CHEMSCRAPER_BATCH_SIZE', '10'))
+
 # Base URL to ChemScraper API
 # We will override this default in production
 CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscraper-services-staging.staging.svc.cluster.local:8000')
@@ -50,11 +54,12 @@ CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscrape
 
 # Read PDFs + locate matching JSONs on disk
 # Create a mapping of PDF file -> JSON file
-def parse_input_files(pdf_input_dir):
+def parse_input_files(pdf_input_dir) -> list[Tuple[list[str], list[str], dict[str, str]]]:
     # Loop to build up CSV mapping and file lists
     mapping = {}
     pdf_files = []
     json_files = []
+    batches = []
 
     # Walk input PDF directory looking for PDF files
     for root, _, files in os.walk(pdf_input_dir):
@@ -78,21 +83,31 @@ def parse_input_files(pdf_input_dir):
                     # For each matching PDF-JSON pair, add to CSV mapping
                     logger.info(f"     Matching JSON file found: {json_file_name}")
 
+                    # If this batch is too large, add it to our running list of batches
+                    if CHEMSCRAPER_BATCH_SIZE > 0 and len(pdf_files) <= CHEMSCRAPER_BATCH_SIZE:
+                        batches.append((pdf_files[:], json_files[:], mapping.copy()))
+                        pdf_files = []
+                        json_files = []
+                        mapping = {}
+
                     # Maintain lists of these pairs to submit at the end
                     mapping[pdf_file_name] = json_file_name
                     pdf_files.append(pdf_file_path)
                     json_files.append(json_file_path)
+
+                    # Make sure to add in the last batch every time
+                    batches.append((pdf_files, json_files, mapping))
 
         logger.debug('PDF Files: ' + str(pdf_files))
         logger.debug('JSON Files: ' + str(json_files))
         logger.debug('Mapping: ' + str(mapping))
 
         # Return lists of files and CSV mapping
-        return pdf_files, json_files, mapping
+        return batches
 
 
 # Write mapping.csv to file, and submit this file with our request
-def save_mapping_csv(file_path, mapping):
+def save_mapping_csv(file_path: str, mapping: dict[str, str]):
     index = 0
     with open(file_path, 'w') as f:
         # Write CSV headers - this is important
@@ -105,7 +120,7 @@ def save_mapping_csv(file_path, mapping):
 
 
 # Submit mapping + related files to Chemscraper API
-def submit_to_chemscraper(index_name: str, pdf_files, json_files, mapping):
+def submit_to_chemscraper(index_name: str, pdf_files: list[str], json_files: list[str], mapping: dict[str, str]):
     # Save mapping.csv to disk, upload to MinIO later
     mapping_csv_file_path = os.path.join(CHEMSCRAPER_REACTIONMINER_JSON_DIR, 'mapping.csv')
     save_mapping_csv(file_path=mapping_csv_file_path, mapping=mapping)
@@ -162,6 +177,7 @@ def write_json_output(output_path: str, response: HTTPValidationError):
 if __name__ == "__main__":
     logger.info(f'Submitting these files to ChemScraper')
     logger.info(f'  Index Name: {CHEMSCRAPER_INDEX_NAME}')
+    logger.info(f'  Batch Size: {CHEMSCRAPER_BATCH_SIZE}')
     logger.info(f'  PDF  Input Dir: {CHEMSCRAPER_PDF_INPUT_DIR}')
     logger.info(f'  JSON Input Dir: {CHEMSCRAPER_REACTIONMINER_JSON_DIR}')
     logger.info(f'  Output Dir: {CHEMSCRAPER_OUTPUT_DIR}')
