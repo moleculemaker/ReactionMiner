@@ -3,6 +3,13 @@ FROM pytorch/pytorch:2.4.0-cuda12.1-cudnn9-runtime
 # FIXME: Temporary workaround for NFS file permissions issues
 USER root
 
+RUN apt-get -qq update && \
+    apt-get -qq install build-essential && \
+    apt-get -qq autoremove && \
+    apt-get -qq autoclean && \
+    apt-get -qq clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ###################
 #     pdf2text    #
 ###################
