@@ -51,6 +51,7 @@ CHEMSCRAPER_BATCH_SIZE = int(os.environ.get('CHEMSCRAPER_BATCH_SIZE', '10'))
 # We will override this default in production
 CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscraper-services-staging.staging.svc.cluster.local:8000')
 
+full_mapping = {}
 
 # Read PDFs + locate matching JSONs on disk
 # Create a mapping of PDF file -> JSON file
@@ -91,7 +92,7 @@ def parse_input_files(pdf_input_dir) -> list[Tuple[list[str], list[str], dict[st
                         mapping = {}
 
                     # Maintain lists of these pairs to submit at the end
-                    mapping[pdf_file_name] = json_file_name
+                    full_mapping[pdf_file_name] = mapping[pdf_file_name] = json_file_name
                     pdf_files.append(pdf_file_path)
                     json_files.append(json_file_path)
 
@@ -117,6 +118,12 @@ def save_mapping_csv(file_path: str, mapping: dict[str, str]):
             json_file = mapping[pdf_file]
             f.write(f'{index},{pdf_file},{json_file}\n')
             index += 1
+
+
+# Write mapping.json to file, and save this file to disk
+def save_mapping_json(file_path, mapping):
+    with open(file_path, 'w') as f:
+        json.dump(mapping, f, indent=4)
 
 
 # Submit mapping + related files to Chemscraper API
@@ -219,11 +226,21 @@ if __name__ == "__main__":
                     logger.warning(f'WARNING - batch output was expected, but not found: {batch_output_file}')
                     pass
 
-        # Write the merged JSON to output folder
+        # Write the merged ChemScraper JSON to output folder
         if len(merged_output) > 0:
-            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output.json')
+            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
             logger.info(f'Writing full ChemScraper output to file: {output_file_path}')
             write_json_output(output_path=output_file_path, data=merged_output)
+
+            # Write full CSV mapping to file
+            logger.info(f'Writing full ChemScraper mapping CSV to file: {output_file_path}')
+            csv_mapping_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'mapping.csv')
+            save_mapping_csv(file_path=csv_mapping_path, mapping=full_mapping)
+
+            # Save mapping.json to file as well
+            logger.info(f'Writing full ChemScraper mapping JSON to file: {output_file_path}')
+            json_mapping_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'mapping.json')
+            save_mapping_json(file_path=json_mapping_path, mapping=full_mapping)
         else:
             logger.error('ERROR: merged_output was empty - check that any batch produced a valid output file')
 
