@@ -163,10 +163,9 @@ def read_file_bytes(path: str) -> BinaryIO:
 
 
 # Write ChemScraper JSON response to file
-def write_json_output(output_path: str, response: HTTPValidationError):
-    logger.info(f'Writing response to file: {output_path}')
+def write_json_output(output_path: str, data: object, batch_number: int = None, num_batches: int = None):
     with open(output_path, "w") as f:
-        json_contents = json.dumps(response, indent=4, ensure_ascii=False)
+        json_contents = json.dumps(data, indent=4, ensure_ascii=False)
         logger.debug("Writing JSON contents: " + json_contents)
         f.write(json_contents)
 
@@ -183,20 +182,50 @@ if __name__ == "__main__":
     logger.info(f'  Output Dir: {CHEMSCRAPER_OUTPUT_DIR}')
 
     try:
-        pdf_files, json_files, mapping = parse_input_files(pdf_input_dir=CHEMSCRAPER_PDF_INPUT_DIR)
-        resp = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
+        batches = parse_input_files(pdf_input_dir=CHEMSCRAPER_PDF_INPUT_DIR)
+        num_batches = len(batches)
+        logger.info(f"Submitting {num_batches} batches")
+        logger.debug(str(batches))
+        for index in range(num_batches):
+            # Extract input for each batch and submit to chemscraper API
+            pdf_files, json_files, mapping = batch = batches[index]
+            num_files = len(pdf_files)
+            logger.info(f"Batch {index+1} / {num_batches}")
+            logger.debug(str(batch))
+            resp = submit_to_chemscraper(index_name=CHEMSCRAPER_INDEX_NAME, pdf_files=pdf_files, json_files=json_files, mapping=mapping)
 
-        # Raise error status if no response body
-        logger.debug("Response: " + str(resp))
+            # Raise error status if no response body
+            logger.debug("Response: " + str(resp))
 
-        # Write JSON response to file
-        if resp is not None:
-            # Convert response dictionary to JSON
-            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, 'chemscraper-output.json')
-            write_json_output(output_path=output_file_path, response=resp)
+            # Write JSON response to file
+            if resp is not None:
+                # Convert response dictionary to JSON
+                output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output-batch-{index}.json')
+                logger.info(f'Writing ChemScraper (batch {index}/{num_batches}) output to file: {output_file_path}')
+                write_json_output(output_path=output_file_path, data=resp)
+            else:
+                # Handle response errors
+                raise HTTPError(code=500, msg='ERROR: Empty response encountered')
+
+        # Zip all JSON outputs into a single JSON file for the frontend
+        merged_output = {}
+        for root, _, files in os.walk(CHEMSCRAPER_OUTPUT_DIR):
+            for name in files:
+                batch_output_file = os.path.join(CHEMSCRAPER_OUTPUT_DIR, name)
+                try:
+                    with open(batch_output_file) as f:
+                        merged_output = merged_output | json.load(fp=f)
+                except FileNotFoundError as ex:
+                    logger.warning(f'WARNING - batch output was expected, but not found: {batch_output_file}')
+                    pass
+
+        # Write the merged JSON to output folder
+        if len(merged_output) > 0:
+            output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output.json')
+            logger.info(f'Writing full ChemScraper output to file: {output_file_path}')
+            write_json_output(output_path=output_file_path, data=merged_output)
         else:
-            # Handle response errors
-            raise HTTPError('ERROR: Empty response encountered')
+            logger.error('ERROR: merged_output was empty - check that any batch produced a valid output file')
 
     except Exception as ex:
         logger.error(f'ERROR: {ex}')
