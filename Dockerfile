@@ -50,6 +50,8 @@ COPY pdf2text/config.py ./extraction/config.py
 COPY chemscraper ./chemscraper
 COPY run_reactionminer.py ./run_reactionminer.py
 COPY run_chemscraper.py ./run_chemscraper.py
+COPY models ./models
+COPY services ./services
 
 # Run our docker entrypoint to execute the full workflow
 COPY entrypoint.sh ./entrypoint.sh
