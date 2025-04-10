@@ -85,7 +85,7 @@ def parse_input_files(pdf_input_dir) -> list[Tuple[list[str], list[str], dict[st
                     logger.info(f"     Matching JSON file found: {json_file_name}")
 
                     # If this batch is too large, add it to our running list of batches
-                    if CHEMSCRAPER_BATCH_SIZE > 0 and len(pdf_files) <= CHEMSCRAPER_BATCH_SIZE:
+                    if 0 < CHEMSCRAPER_BATCH_SIZE < len(pdf_files):
                         batches.append((pdf_files[:], json_files[:], mapping.copy()))
                         pdf_files = []
                         json_files = []
@@ -170,7 +170,7 @@ def read_file_bytes(path: str) -> BinaryIO:
 
 
 # Write ChemScraper JSON response to file
-def write_json_output(output_path: str, data: object, batch_number: int = None, num_batches: int = None):
+def write_json_output(output_path: str, data: object):
     with open(output_path, "w") as f:
         json_contents = json.dumps(data, indent=4, ensure_ascii=False)
         logger.debug("Writing JSON contents: " + json_contents)
