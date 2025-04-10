@@ -11,7 +11,12 @@ echo '######################################'
 echo '#######    RUNNING pdf2text    #######'
 echo '######################################'
 cd /workspace/pdf2text
-conda run --no-capture-output -n doc2json bash ./pdf2txt.sh
+if [[ -z "${SKIP_PDF2TEXT}" ]]; then
+  conda run --no-capture-output -n doc2json bash ./pdf2txt.sh
+else
+  echo 'SKIP_PDF2TEXT is set, skipping pdf2text stage'
+fi
+
 
 # TODO: move files?
 
@@ -20,10 +25,18 @@ echo '###########################################'
 echo '#######    RUNNING ReactionMiner    #######'
 echo '###########################################'
 cd /workspace
-python ./run_reactionminer.py
+if [[ -z "${SKIP_REACTIONMINER}" ]]; then
+  python ./run_reactionminer.py
+else
+  echo 'SKIP_REACTIONMINER is set, skipping ReactionMiner stage'
+fi
 
 # Run ChemScraper using input PDF and ReactionMiner JSON output
 echo '###########################################'
 echo '########    RUNNING ChemScraper    ########'
 echo '###########################################'
-python ./run_chemscraper.py
+if [[ -z "${SKIP_CHEMSCRAPER}" ]]; then
+  python ./run_chemscraper.py
+else
+  echo 'SKIP_CHEMSCRAPER is set, skipping ChemScraper stage'
+fi
