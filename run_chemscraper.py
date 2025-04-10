@@ -53,6 +53,7 @@ CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscrape
 
 full_mapping = {}
 
+
 # Read PDFs + locate matching JSONs on disk
 # Create a mapping of PDF file -> JSON file
 def parse_input_files(pdf_input_dir) -> list[Tuple[list[str], list[str], dict[str, str]]]:
@@ -86,10 +87,10 @@ def parse_input_files(pdf_input_dir) -> list[Tuple[list[str], list[str], dict[st
 
                     # If this batch is too large, add it to our running list of batches
                     if 0 < CHEMSCRAPER_BATCH_SIZE < len(pdf_files):
-                        batches.append((pdf_files[:], json_files[:], mapping.copy()))
-                        pdf_files = []
-                        json_files = []
-                        mapping = {}
+                        batches.append((pdf_files.copy(), json_files.copy(), mapping.copy()))
+                        pdf_files.clear()
+                        json_files.clear()
+                        mapping.clear()
 
                     # Maintain lists of these pairs to submit at the end
                     full_mapping[pdf_file_name] = mapping[pdf_file_name] = json_file_name
