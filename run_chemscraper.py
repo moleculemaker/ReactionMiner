@@ -216,9 +216,11 @@ if __name__ == "__main__":
             # Write JSON response to file
             if resp is not None:
                 # Convert response dictionary to JSON
-                output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output-batch-{index}.json')
+                output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output-batch-{index+1}.json')
                 logger.info(f'Writing ChemScraper (batch {index+1}/{num_batches}) output to file: {output_file_path}')
-                write_json_output(output_path=output_file_path, data=resp)
+                write_json_output(output_path=output_file_path, data={
+                    f'batch-{index+1}': resp
+                })
             else:
                 # TODO: Handle response errors?
                 # raise ValueError('Empty response encountered')
@@ -227,18 +229,18 @@ if __name__ == "__main__":
         # Zip all JSON outputs into a single JSON file for the frontend
         merged_output = {}
         for root, _, files in os.walk(CHEMSCRAPER_OUTPUT_DIR):
-            for name in files:
-                if not name.startswith('chemscraper-output-batch-'):
-                    continue
-
-                batch_output_file = os.path.join(CHEMSCRAPER_OUTPUT_DIR, name)
-                try:
-                    with open(batch_output_file) as f:
-                        json_content = json.loads(f.read())
-                        merged_output = merged_output | json_content
-                except FileNotFoundError as ex:
-                    logger.warning(f'WARNING - batch output was expected, but not found: {batch_output_file}')
-                    pass
+            for filename in files:
+                if filename.startswith('chemscraper-output-batch-'):
+                    batch_output_file = os.path.join(CHEMSCRAPER_OUTPUT_DIR, filename)
+                    try:
+                        with open(batch_output_file) as f:
+                            json_content = json.loads(f.read())
+                            merged_output = merged_output | json_content
+                    except FileNotFoundError as ex:
+                        logger.warning(f'WARNING - batch output was expected, but not found: {batch_output_file}')
+                        pass
+                else:
+                    logger.warning('Skipping file that is not ChemScraper output: ' + filename)
 
         # Write the merged ChemScraper JSON to output folder
         if len(merged_output) > 0:
