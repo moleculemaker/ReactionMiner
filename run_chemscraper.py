@@ -220,8 +220,9 @@ if __name__ == "__main__":
                 logger.info(f'Writing ChemScraper (batch {index+1}/{num_batches}) output to file: {output_file_path}')
                 write_json_output(output_path=output_file_path, data=resp)
             else:
-                # Handle response errors
-                raise ValueError('Empty response encountered')
+                # TODO: Handle response errors?
+                # raise ValueError('Empty response encountered')
+                logger.warning(f'Empty response encountered from ChemScraper API: {resp} - skipped writing output JSON')
 
         # Zip all JSON outputs into a single JSON file for the frontend
         merged_output = {}
