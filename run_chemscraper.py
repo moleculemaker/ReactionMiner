@@ -53,6 +53,9 @@ CHEMSCRAPER_BASE_URL = os.environ.get('CHEMSCRAPER_BASE_URL', 'http://chemscrape
 
 full_mapping = {}
 
+# Track number of failures - this will be our error code when the process exits
+failures = 0
+
 
 # Read PDFs + locate matching JSONs on disk
 # Create a mapping of PDF file -> JSON file
@@ -201,30 +204,36 @@ if __name__ == "__main__":
             pdf_batch_files = batched_pdfs[index]
             json_batch_files = batched_json[index]
 
-            logger.info(f'Submitting ChemScraper batch ({index+1}/{num_batches})')
+            try:
+                logger.info(f'Submitting ChemScraper batch ({index+1}/{num_batches})')
 
-            # Extract input for each batch and submit to chemscraper API
-            resp = submit_to_chemscraper(
-                index_name=CHEMSCRAPER_INDEX_NAME,
-                pdf_files=pdf_batch_files,
-                json_files=json_batch_files
-            )
+                # Extract input for each batch and submit to chemscraper API
+                resp = submit_to_chemscraper(
+                    index_name=CHEMSCRAPER_INDEX_NAME,
+                    pdf_files=pdf_batch_files,
+                    json_files=json_batch_files
+                )
 
-            # Raise error status if no response body
-            logger.debug("Response: " + str(resp))
+                # Raise error status if no response body
+                logger.debug("Response: " + str(resp))
 
-            # Write JSON response to file
-            if resp is not None:
-                # Convert response dictionary to JSON
-                output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output-batch-{index+1}.json')
-                logger.info(f'Writing ChemScraper (batch {index+1}/{num_batches}) output to file: {output_file_path}')
-                write_json_output(output_path=output_file_path, data={
-                    f'batch-{index+1}': resp
-                })
-            else:
-                # TODO: Handle response errors?
-                # raise ValueError('Empty response encountered')
-                logger.warning(f'Empty response encountered from ChemScraper API: {resp} - skipped writing output JSON')
+                # Write JSON response to file
+                if resp is not None:
+                    # Convert response dictionary to JSON
+                    output_file_path = os.path.join(CHEMSCRAPER_OUTPUT_DIR, f'chemscraper-output-batch-{index+1}.json')
+                    logger.info(f'Writing ChemScraper (batch {index+1}/{num_batches}) output to file: {output_file_path}')
+                    write_json_output(output_path=output_file_path, data={
+                        f'batch-{index+1}': resp
+                    })
+                else:
+                    # TODO: Handle response errors?
+                    # raise ValueError('Empty response encountered')
+                    logger.warning(f'Empty response encountered from ChemScraper API: {resp} - skipped writing output JSON')
+            except Exception as ex:
+                logger.error(f'ERROR: {ex}')
+                logger.error(traceback.format_exc())
+                failures += 1
+                pass
 
         # Zip all JSON outputs into a single JSON file for the frontend
         merged_output = {}
@@ -260,13 +269,11 @@ if __name__ == "__main__":
         else:
             logger.error('ERROR: merged_output was empty - check that any batch produced a valid output file')
 
-    except Exception as ex:
-        logger.error(f'ERROR: {ex}')
-        logger.error(traceback.format_exc())
-        sys.exit(1)
     finally:
         logger.warning(f'Cleaning up resources...')
         collected_count = gc.collect()
         logger.warning(f'Cleaned up resources: {collected_count}')
         torch.cuda.empty_cache()
         logger.warning(f'Cache has been emptied. Shutting down...')
+        # exit_code = 0 if failures == 0 else 1
+        sys.exit(failures)
